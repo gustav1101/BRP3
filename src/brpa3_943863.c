@@ -16,10 +16,26 @@ MODULE_DESCRIPTION("In-kernel RSA encryption");
 
 //default buffer size
 static unsigned long buffer_size = 8192;
+static unsigned short e = 7;
+static unsigned short N = 33;
+
 
 //make buffer size changeable by user (and stick some description to it)
 module_param(buffer_size, ulong, (S_IRUSR | S_IRGRP | S_IROTH));
 MODULE_PARM_DESC(buffer_size, "Internal buffer size");
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*
@@ -28,7 +44,8 @@ MODULE_PARM_DESC(buffer_size, "Internal buffer size");
  */
 struct buffer {
     wait_queue_head_t read_queue;  //For programs to wait until we're done encrypting (or have something to encrypt)
-    char *data, *end;   //Pointer to end and beginning of buffer
+    char *data;   //Pointer to beginning of buffer
+    char *end;    //Pointer to first bit AFTER(!) end of buffer
     char *read_ptr;     //points to current position
     unsigned long size;  //holds size of buffer (not strictly necessary)
 };
@@ -82,42 +99,273 @@ static void buffer_free(struct buffer *buffer)
 
 
 /*
-***************ACTUAL CODE **********************
+***************ACTUAL MAGIC **********************
 */
 
 
-static ssize_t reverse_write(struct file *file, const char __user * in,
-			     size_t size, loff_t * off)
+
+
+/************* BUFFER CONTENT MANIPULATIONS **************/
+/*static char *reverse_word(char *start, char *end)
 {
-    struct buffer *buf = file->private_data;
-    ssize_t result;
-    if (size > buffer_size) {
-	result = -EFBIG;
+    char *orig_start = start, tmp;
+    for (; start < end; start++, end--)
+    {
+	tmp = *start;
+	*start = *end;
+	*end = tmp;
+    }
+    return orig_start;
+}
+
+
+static char *reverse_phrase(char *start, char *end)
+{
+    char *word_start = start, *word_end = NULL;
+    while ((word_end = memchr(word_start, ' ', end - word_start)) != NULL) {
+	reverse_word(word_start, word_end - 1);
+	word_start = word_end + 1;
+    }
+    reverse_word(word_start, end);
+    return reverse_word(start, end);
+}
+*/
+
+static unsigned long parse(char *start, char *end)
+{
+    
+    char *tempbuffer;
+    char *curTempBuffer;
+    char *we;
+    char *cur;
+    unsigned long val;
+    
+    tempbuffer = kzalloc(end - start + 1 , GFP_KERNEL);
+    curTempBuffer = tempbuffer;
+
+    if(unlikely(!tempbuffer))
+    {
+	return 0;
+    }
+    
+    do
+    {
+	*(curTempBuffer++) = *(cur++);
+    }while(cur != end);
+
+    val = kstrtoul(tempbuffer,&we, 10);
+
+    
+    kfree(tempbuffer);
+
+
+    return val;
+    /*
+    val = calc(val,N,e);
+    
+    printf("encr Value = %ld\n",val);
+
+
+    val = calc(val,N,d);
+    printf("dec Value = %ld\n",val);
+    
+    //free(start);
+    return 0;
+    */
+
+}
+
+static unsigned long calc(unsigned long val, int N, int e)
+{
+    long ret;
+    if(depth == 1)
+    {
+	return val;
+    }
+
+    ret = ( (calc(val,N, depth-1) % N) * (val % N) )%N;
+    
+    return ret;
+}
+
+
+
+char* tostring(unsigned long ulong_value)
+{
+    
+    char *buf;
+    int c;
+    const int n= snprintf(NULL, 0, "%lu", ulong_value);
+    if(n <= 0)
+    {
+	return NULL;
+    }
+
+    buf = kzalloc(n+1,GFP_KERNEL);
+    if(unlikely(!buf))
+    {
+	return NULL;
+    }
+    
+    c = snprintf(buf, n+1, "%lu", ulong_value);
+    if(buf[n]!='\0')
+    {
+	return NULL;
+    }
+    if( c!= n)
+    {
+	return NULL;
+    }
+
+    return buf;
+}
+
+void rsa_encrypt(char *start, char *end)
+{
+    char *buf;
+    unsigned long val;
+    if(start > end)
+    {
+	return;
+    }
+    
+    val = parse(start,end);
+    if(val==0)
+    {
+	return;
+    }
+    
+    val = calc(val,N,e);
+
+    buf = tostring(val);
+    if(unlikely(!buf))
+    {
+	return;
+    }
+
+    
+    strncpy(start,buf,(end-start));
+    
+
+
+    kfree(buf);
+
+}
+
+
+
+
+
+/************** BUFFER OPERATIONS ********************/
+
+
+static int rsa_open(struct inode *inode, struct file *file)
+{
+    struct buffer *buf;  //the buffer to be used
+    int err = 0;  //return value for this method
+/*
+ * Real code can use inode to get pointer to the private
+ * device state.
+ */
+    buf = buffer_alloc(buffer_size);  //initialise our buffer
+    if (unlikely(!buf)) {             //if that failed: return errornumber
+	err = -ENOMEM;
 	goto out;
     }
-    if (mutex_lock_interruptible(&buf->lock)) {
-	result = -ERESTARTSYS;
+    //store the buffer in the kernel data structure
+    file->private_data = buf;
+out:
+    return err;
+}
+
+
+
+/*
+ * Read from buffer. Copies the data to user space. Returns Error number or number of bytes read.
+ */
+static ssize_t rsa_read(struct file *file, char __user * out,
+			    size_t size, loff_t * off)
+{
+    struct buffer *buf = file->private_data; //get pointer to buffer
+    ssize_t result;  //return value. will contain error number or number of bytes read
+    
+    while (buf->read_ptr == buf->end) {
+	//if no data: return error number
+	if (file->f_flags & O_NONBLOCK) {
+	    result = -EAGAIN;
+	    goto out;
+	}
+	//wait until something is available to read
+	if (wait_event_interruptible
+	    (buf->read_queue, buf->read_ptr != buf->end)) {
+	    result = -ERESTARTSYS;  //will restart system call
+	    goto out;
+	}
+    }
+
+    //copy data to user space
+    size = min(size, (size_t) (buf->end - buf->read_ptr));
+    if (copy_to_user(out, buf->read_ptr, size)) {
+	result = -EFAULT;  //on failed copying
 	goto out;
     }
-    if (copy_from_user(buf->data, in, size)) {
-	result = -EFAULT;
-	goto out_unlock;
-    }
-    buf->end = buf->data + size;
-    buf->read_ptr = buf->data;
-    if (buf->end > buf->data)
-	reverse_phrase(buf->data, buf->end - 1);
-    wake_up_interruptible(&buf->read_queue);
+
+    //increase buffer position
+    buf->read_ptr += size;
+    //all was well, return value will contain number of bytes read
     result = size;
-out_unlock:
-    mutex_unlock(&buf->lock);
 out:
     return result;
 }
 
 
+/*
+ * Write data in buffer
+ */
+static ssize_t rsa_write(struct file *file, const char __user * in,
+			     size_t size, loff_t * off)
+{
+    
+    struct buffer *buf = file->private_data; //get pointer to buffer
+    ssize_t result;  //return value. will contain error number or number of bytes written
+
+    //check buffer size vs size of given data, if it's too big start throwing error numbers.
+    if (size > buffer_size) {
+	result = -EFBIG;
+	goto out;
+    }
+
+    //copy data from user space, if failed: return error number
+    if (copy_from_user(buf->data, in, size))
+    {
+	result = -EFAULT;
+	goto out;
+    }
+
+    //initialise buffer end and current position (to begin of buffer)
+    buf->end = buf->data + size;
+    buf->read_ptr = buf->data;
+
+    //if there is something to do: encrypt
+    if (buf->end > buf->data)
+    {
+        rsa_encrypt(buf->data, buf->end - 1);
+    }
+    // wake up possible readers (or other writers)
+    wake_up_interruptible(&buf->read_queue);
+    //return number of bytes written
+    result = size;
+out:
+    return result;
+}
+
+
+/*
+ * Clean up
+ */
 static int reverse_close(struct inode *inode, struct file *file)
 {
+    //free buffer
     struct buffer *buf = file->private_data;
     buffer_free(buf);
     return 0;

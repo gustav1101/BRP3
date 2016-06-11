@@ -1,0 +1,22 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+ 
+main()
+{
+    int val = 21;
+
+    int e = 7;
+    int d = 7;
+    int N = 33;
+    
+    for(int i = 0; i<e; i++)
+    {
+	val *= val;
+    }
+
+    val = val % 33;
+
+    printf("d\n", val);
+
+}

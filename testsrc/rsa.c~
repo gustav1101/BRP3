@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+long calc(long start, int N, short depth)
+{
+    long ret;
+    if(depth == 1)
+    {
+	return start;
+    }
+
+    ret = ( (calc(start,N, depth-1) % N) * (start % N) )%N;
+    
+    return ret;
+}
+
+
+
+int main()
+{
+    char *start = "7";
+    char *end;
+    char *cur;
+    long val;
+    int i;
+    char *tempbuffer;
+    char *curTempBuffer;
+    char *we;
+    int N = 143;
+    int e = 23;
+    int d = 47;
+    
+    /*start = malloc(30);
+    if(!start)
+    {
+	return 1;
+	}*/
+
+
+    
+    
+    cur = start;
+    end = start +strlen(start)+1;
+    i = strlen(start);
+    printf("length %d\n", i);
+
+    i = end - start;
+    printf("I = %d\n", i);
+    
+    tempbuffer = malloc(end - start + 1 );
+    curTempBuffer = tempbuffer;
+
+    i=0;
+    do
+    {
+	printf("%d\n",i++);
+	*(curTempBuffer++) = *(cur++);
+    }while(cur != end);
+
+    val = strtol(tempbuffer,&we, 10);
+    printf("Initial value = %ld\n", val);
+
+    val = calc(val,N,e);
+    
+    printf("encr Value = %ld\n",val);
+
+
+    val = calc(val,N,d);
+    printf("dec Value = %ld\n",val);
+    
+    //free(start);
+    free(tempbuffer);
+    return 0;
+}
