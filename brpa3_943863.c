@@ -136,9 +136,10 @@ static unsigned long parse(char *start, char *end)
     
     char *tempbuffer;
     char *curTempBuffer;
-    char *we;
+    //char *we;
     char *cur;
     unsigned long val;
+    int errno;
     
     tempbuffer = kzalloc(end - start + 1 , GFP_KERNEL);
     curTempBuffer = tempbuffer;
@@ -147,14 +148,19 @@ static unsigned long parse(char *start, char *end)
     {
 	return 0;
     }
+
+    cur = start;
     
     do
     {
 	*(curTempBuffer++) = *(cur++);
     }while(cur != end);
 
-    val = kstrtoul(tempbuffer, 0/*&we*/, 10);
-
+    errno = kstrtoul(tempbuffer, 10, &val );
+    if(errno != 0)
+    {
+	return 0;
+    }
     
     kfree(tempbuffer);
 
@@ -175,7 +181,7 @@ static unsigned long parse(char *start, char *end)
 
 }
 
-static unsigned long calc(unsigned long val, int N, int e)
+static unsigned long calc(unsigned long val, int N, short depth)
 {
     long ret;
     if(depth == 1)
@@ -363,7 +369,7 @@ out:
 /*
  * Clean up
  */
-static int reverse_close(struct inode *inode, struct file *file)
+static int rsa_close(struct inode *inode, struct file *file)
 {
     //free buffer
     struct buffer *buf = file->private_data;
@@ -433,8 +439,8 @@ static int __init rsa_init(void)
  */
 static void __exit rsa_exit(void)
 {
-    misc_deregister(&reverse_misc_device);
-    printk(KERN_INFO "reverse device has been unregistered\n");
+    misc_deregister(&rsa_misc_device);
+    printk(KERN_INFO "RSA device has been unregistered\n");
 }
 
 
