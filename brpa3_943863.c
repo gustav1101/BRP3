@@ -136,26 +136,55 @@ static unsigned long parse(char *start, char *end)
     
     char *tempbuffer;
     char *curTempBuffer;
-    //char *we;
     char *cur;
     unsigned long val;
     int errno;
+    int i;
+
+    if(!start)
+    {
+	printk(KERN_INFO "Start is null\n");
+	return 0;
+    }
+
+    if(!end)
+    {
+	printk(KERN_INFO "End is null\n");
+	return 0;
+    }
+    
+    if(start > end)
+    {
+	printk(KERN_INFO "End greater than start\n");
+	return 0;
+    }
+    if(start == end)
+    {
+	printk(KERN_INFO "End equal to start\n");
+	return 0;
+    }    
     
     tempbuffer = kzalloc(end - start + 1 , GFP_KERNEL);
-    curTempBuffer = tempbuffer;
-
     if(unlikely(!tempbuffer))
     {
 	return 0;
     }
 
-    cur = start;
+    curTempBuffer = tempbuffer;
     
-    do
-    {
-	*(curTempBuffer++) = *(cur++);
-    }while(cur != end);
+    
 
+    cur = start;
+
+    
+    //while(cur!=end-1)
+    
+    for(i = 0; i<(end-start); i++)
+    {
+	printk(KERN_INFO "I val is %d\n",i);
+	*(curTempBuffer++) = *(cur++);
+    }
+    
     errno = kstrtoul(tempbuffer, 10, &val );
     if(errno != 0)
     {
@@ -163,9 +192,9 @@ static unsigned long parse(char *start, char *end)
     }
     
     kfree(tempbuffer);
+    /*
 
-
-    return val;
+    return val;*/ return 0;
     /*
     val = calc(val,N,e);
     
@@ -236,7 +265,7 @@ void rsa_encrypt(char *start, char *end)
     }
     
     val = parse(start,end);
-    if(val==0)
+    /*if(val==0)
     {
 	return;
     }
@@ -247,14 +276,14 @@ void rsa_encrypt(char *start, char *end)
     if(unlikely(!buf))
     {
 	return;
-    }
+	}
 
     
-    strncpy(start,buf,(end-start));
+	strncpy(start,buf,(end-start));*/
     
 
 
-    kfree(buf);
+    //kfree(buf);
 
 }
 
@@ -355,7 +384,7 @@ static ssize_t rsa_write(struct file *file, const char __user * in,
     //if there is something to do: encrypt
     if (buf->end > buf->data)
     {
-        rsa_encrypt(buf->data, buf->end - 1);
+        rsa_encrypt(buf->data, buf->end);
     }
     // wake up possible readers (or other writers)
     wake_up_interruptible(&buf->read_queue);

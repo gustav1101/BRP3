@@ -21,17 +21,15 @@ __attribute__((section("__versions"))) = {
 	{ 0x8d2e268b, __VMLINUX_SYMBOL_STR(param_ops_ulong) },
 	{ 0x8a1354a1, __VMLINUX_SYMBOL_STR(noop_llseek) },
 	{ 0x24598c4e, __VMLINUX_SYMBOL_STR(misc_deregister) },
-	{ 0x27e1a049, __VMLINUX_SYMBOL_STR(printk) },
 	{ 0x774f6678, __VMLINUX_SYMBOL_STR(misc_register) },
-	{ 0xcf21d241, __VMLINUX_SYMBOL_STR(__wake_up) },
-	{ 0x4f6b400b, __VMLINUX_SYMBOL_STR(_copy_from_user) },
-	{ 0x9166fada, __VMLINUX_SYMBOL_STR(strncpy) },
-	{ 0x3c80c06c, __VMLINUX_SYMBOL_STR(kstrtoull) },
 	{ 0x28318305, __VMLINUX_SYMBOL_STR(snprintf) },
 	{ 0xf432dd3d, __VMLINUX_SYMBOL_STR(__init_waitqueue_head) },
-	{ 0xd2b09ce5, __VMLINUX_SYMBOL_STR(__kmalloc) },
 	{ 0x6e938e79, __VMLINUX_SYMBOL_STR(kmem_cache_alloc_trace) },
 	{ 0x6d0fc37d, __VMLINUX_SYMBOL_STR(kmalloc_caches) },
+	{ 0xcf21d241, __VMLINUX_SYMBOL_STR(__wake_up) },
+	{ 0x4f6b400b, __VMLINUX_SYMBOL_STR(_copy_from_user) },
+	{ 0x27e1a049, __VMLINUX_SYMBOL_STR(printk) },
+	{ 0xd2b09ce5, __VMLINUX_SYMBOL_STR(__kmalloc) },
 	{ 0x4f8b5ddb, __VMLINUX_SYMBOL_STR(_copy_to_user) },
 	{ 0xfa66f77c, __VMLINUX_SYMBOL_STR(finish_wait) },
 	{ 0x34f22f94, __VMLINUX_SYMBOL_STR(prepare_to_wait_event) },
@@ -46,4 +44,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "733175836317B1253513815");
+MODULE_INFO(srcversion, "A8229E99C552A571EA8E688");
