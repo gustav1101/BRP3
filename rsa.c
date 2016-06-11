@@ -22,7 +22,7 @@ int main()
     printf("Reading.. \n");
     read(fd, readbuf, 25);
 
-    printf("Value is %s", readbuf);
+    printf("Value is %s\n", readbuf);
 
 
     return 0;

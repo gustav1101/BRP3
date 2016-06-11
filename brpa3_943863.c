@@ -16,8 +16,8 @@ MODULE_DESCRIPTION("In-kernel RSA encryption");
 
 //default buffer size
 static unsigned long buffer_size = 8192;
-static unsigned short e = 7;
-static unsigned short N = 33;
+static unsigned short e = 23;
+static unsigned short N = 143;
 
 
 //make buffer size changeable by user (and stick some description to it)
@@ -181,7 +181,6 @@ static unsigned long parse(char *start, char *end)
     
     for(i = 0; i<(end-start); i++)
     {
-	printk(KERN_INFO "I val is %d\n",i);
 	*(curTempBuffer++) = *(cur++);
     }
     
@@ -192,27 +191,16 @@ static unsigned long parse(char *start, char *end)
     }
     
     kfree(tempbuffer);
-    /*
-
-    return val;*/ return 0;
-    /*
-    val = calc(val,N,e);
     
-    printf("encr Value = %ld\n",val);
 
-
-    val = calc(val,N,d);
-    printf("dec Value = %ld\n",val);
-    
-    //free(start);
-    return 0;
-    */
+    return val;
 
 }
 
-static unsigned long calc(unsigned long val, int N, short depth)
+static unsigned long calc(unsigned long val, int N, unsigned short depth)
 {
     long ret;
+   	
     if(depth == 1)
     {
 	return val;
@@ -265,25 +253,30 @@ void rsa_encrypt(char *start, char *end)
     }
     
     val = parse(start,end);
-    /*if(val==0)
+    if(val==0)
     {
 	return;
     }
-    
+
+    	
     val = calc(val,N,e);
 
+    printk("Reached this point...\n");
+    printk(KERN_INFO "ENC val is %lu\n",val);
+	
+    
     buf = tostring(val);
     if(unlikely(!buf))
     {
 	return;
-	}
+    }
 
     
-	strncpy(start,buf,(end-start));*/
+    strncpy(start,buf,(end-start));
     
 
 
-    //kfree(buf);
+    kfree(buf);
 
 }
 
