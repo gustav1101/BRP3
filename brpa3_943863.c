@@ -16,14 +16,20 @@ MODULE_DESCRIPTION("In-kernel RSA encryption");
 
 //default buffer size
 static unsigned long buffer_size = 8192;
-static unsigned short e = 23;
-static unsigned short N = 143;
+static unsigned short exponent = 7;
+static unsigned short modulus = 33;
 
 
 //make buffer size changeable by user (and stick some description to it)
 module_param(buffer_size, ulong, (S_IRUSR | S_IRGRP | S_IROTH));
 MODULE_PARM_DESC(buffer_size, "Internal buffer size");
 
+
+module_param(exponent, ushort, (S_IRUSR | S_IRGRP | S_IROTH));
+MODULE_PARM_DESC(exponent, "Exponent for RSA algorithm");
+
+module_param(modulus, ushort, (S_IRUSR | S_IRGRP | S_IROTH));
+MODULE_PARM_DESC(modulus, "Modulus for RSA algorithm");
 
 
 
@@ -106,30 +112,7 @@ static void buffer_free(struct buffer *buffer)
 
 
 /************* BUFFER CONTENT MANIPULATIONS **************/
-/*static char *reverse_word(char *start, char *end)
-{
-    char *orig_start = start, tmp;
-    for (; start < end; start++, end--)
-    {
-	tmp = *start;
-	*start = *end;
-	*end = tmp;
-    }
-    return orig_start;
-}
 
-
-static char *reverse_phrase(char *start, char *end)
-{
-    char *word_start = start, *word_end = NULL;
-    while ((word_end = memchr(word_start, ' ', end - word_start)) != NULL) {
-	reverse_word(word_start, word_end - 1);
-	word_start = word_end + 1;
-    }
-    reverse_word(word_start, end);
-    return reverse_word(start, end);
-}
-*/
 
 static unsigned long parse(char *start, char *end)
 {
@@ -177,8 +160,6 @@ static unsigned long parse(char *start, char *end)
     cur = start;
 
     
-    //while(cur!=end-1)
-    
     for(i = 0; i<(end-start); i++)
     {
 	*(curTempBuffer++) = *(cur++);
@@ -213,11 +194,11 @@ static unsigned long calc(unsigned long val, int N, unsigned short depth)
 
 
 
-char* tostring(unsigned long ulong_value)
+char* tostring(unsigned long ulong_value, char *start, char **end)
 {
     
-    char *buf;
-    int c;
+    char *buf;  //the string will be put in here
+    int c;      //length of string
     const int n= snprintf(NULL, 0, "%lu", ulong_value);
     if(n <= 0)
     {
@@ -240,40 +221,41 @@ char* tostring(unsigned long ulong_value)
 	return NULL;
     }
 
+    //this must end here! Since start's string has been changed, adjust end.
+    *end = start + n;
+    
+
     return buf;
 }
 
-void rsa_encrypt(char *start, char *end)
+void rsa_encrypt(char *start, char **end)
 {
     char *buf;
     unsigned long val;
-    if(start > end)
+    if(start > *end)
     {
 	return;
     }
     
-    val = parse(start,end);
+    val = parse(start,*end);
     if(val==0)
     {
 	return;
     }
 
     	
-    val = calc(val,N,e);
+    val = calc(val,modulus,exponent);
 
-    printk("Reached this point...\n");
-    printk(KERN_INFO "ENC val is %lu\n",val);
-	
     
-    buf = tostring(val);
+    buf = tostring(val, start, end);
     if(unlikely(!buf))
     {
 	return;
     }
 
     
-    strncpy(start,buf,(end-start));
-    
+    strncpy(start,buf,(*end-start));
+    *(end-1) = '\0';
 
 
     kfree(buf);
@@ -377,7 +359,7 @@ static ssize_t rsa_write(struct file *file, const char __user * in,
     //if there is something to do: encrypt
     if (buf->end > buf->data)
     {
-        rsa_encrypt(buf->data, buf->end);
+        rsa_encrypt(buf->data, &buf->end);
     }
     // wake up possible readers (or other writers)
     wake_up_interruptible(&buf->read_queue);
@@ -450,8 +432,8 @@ static int __init rsa_init(void)
 
     
     printk(KERN_INFO
-	   "RSA device has been registered, buffer size is %lu bytes\n",
-	   buffer_size);
+	   "RSA device has been registered, buffer size is %lu bytes, e=%hu, m=%hu\n",
+	   buffer_size, exponent, modulus);
     return 0;
 }
 
