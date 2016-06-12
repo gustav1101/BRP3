@@ -9,6 +9,9 @@
 #include <linux/slab.h>	/* kzalloc() function */
 #include <linux/sched.h>	/* wait queues */
 #include <linux/uaccess.h>	/* copy_{to,from}_user() */
+#include <linux/version.h>      /* check linux version for ioctl */
+
+#include "query_ioctl.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Lukas Kalde <lkalde@uos.de>");
@@ -37,7 +40,7 @@ MODULE_PARM_DESC(modulus, "Modulus for RSA algorithm");
 
 
 
-
+/************* BUFFER DECLARATION, ALLOCATION, AND FREE ***************/
 
 
 
@@ -228,6 +231,10 @@ char* tostring(unsigned long ulong_value, char *start, char **end)
     return buf;
 }
 
+/*
+ * Basically a container method that branches to other methods to
+ * increase readability
+ */
 void rsa_encrypt(char *start, char **end)
 {
     char *buf;
@@ -263,7 +270,53 @@ void rsa_encrypt(char *start, char **end)
 }
 
 
+/************** IOCTL *****************************/
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+static int my_ioctl(struct inode *i, struct file *f, unsigned int cmd, unsigned long arg)
+#else
+    static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
+#endif
+{
+    unsigned short q;
+ 
+    switch (cmd)
+    {
+    case BRPA3_SET_EXPONENT:
+	if (copy_from_user(&q, (unsigned short *)&arg, sizeof(unsigned short)))
+	{
+	    return -EACCES;
+	}
+	exponent = q;
+	break;
+    case BRPA3_SET_MODULUS:
+	if (copy_from_user(&q, (unsigned short*)&arg, sizeof(unsigned short)))
+	{
+	    return -EACCES;
+	}
+	modulus = q;
+	break;
+    case BRPA3_GET_EXPONENT:
+	q = exponent;
+	if (copy_to_user((unsigned short*)&arg, &q, sizeof(unsigned short)))
+	{
+	    return -EACCES;
+	}
+	break;
+    case BRPA3_GET_MODULUS:
+	q = modulus;
+	if (copy_to_user((unsigned short*)&arg, &q, sizeof(unsigned short)))
+	{
+	    return -EACCES;
+	}
+	break;
+    default:
+	return -EINVAL;
+    }
+ 
+    return 0;
+}
+ 
 
 
 /************** BUFFER OPERATIONS ********************/
@@ -402,7 +455,12 @@ static struct file_operations rsa_fops = {
     .read = rsa_read,
     .write = rsa_write,
     .release = rsa_close,
-    .llseek = noop_llseek
+    .llseek = noop_llseek,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+    .ioctl = my_ioctl
+#else
+    .unlocked_ioctl = my_ioctl
+#endif
 };
 
 
