@@ -278,34 +278,37 @@ static int my_ioctl(struct inode *i, struct file *f, unsigned int cmd, unsigned 
     static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 #endif
 {
-    unsigned short q;
- 
+    unsigned short q; //= kzalloc(sizeof(unsigned short),GFP_KERNEL);
+    printk(KERN_INFO "IOCTL REACHED\n");
+    
     switch (cmd)
     {
     case BRPA3_SET_EXPONENT:
-	if (copy_from_user(&q, (unsigned short *)&arg, sizeof(unsigned short)))
+	if (copy_from_user(&q, (unsigned short *)arg, sizeof(unsigned short)))
 	{
 	    return -EACCES;
 	}
 	exponent = q;
 	break;
     case BRPA3_SET_MODULUS:
-	if (copy_from_user(&q, (unsigned short*)&arg, sizeof(unsigned short)))
+	if (copy_from_user(&q, (unsigned short*)arg, sizeof(unsigned short)))
 	{
 	    return -EACCES;
 	}
 	modulus = q;
 	break;
     case BRPA3_GET_EXPONENT:
+    
 	q = exponent;
-	if (copy_to_user((unsigned short*)&arg, &q, sizeof(unsigned short)))
+        
+	if (copy_to_user((unsigned short*)arg, &q,sizeof(unsigned short))!=0)
 	{
 	    return -EACCES;
 	}
 	break;
     case BRPA3_GET_MODULUS:
 	q = modulus;
-	if (copy_to_user((unsigned short*)&arg, &q, sizeof(unsigned short)))
+	if (copy_to_user((unsigned short*)arg, &q, sizeof(unsigned short)))
 	{
 	    return -EACCES;
 	}
@@ -313,7 +316,7 @@ static int my_ioctl(struct inode *i, struct file *f, unsigned int cmd, unsigned 
     default:
 	return -EINVAL;
     }
- 
+
     return 0;
 }
  

@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-
+#include "query_ioctl.h"
     
 
 
@@ -15,6 +15,7 @@ int main(int argc, char* argv[])
     char readbuf[25];
     int fd = open("/dev/rsa", O_RDWR);
     char* message = "7";
+    unsigned short io;
 
     if(argc==2)
     {
@@ -29,6 +30,49 @@ int main(int argc, char* argv[])
 	printf("Error on Test...%s\n", strerror(errno));
 	return errno;
     }
+
+    io = 3;
+    if (ioctl(fd, BRPA3_SET_EXPONENT, &io) == -1)
+    {
+	perror("Failed to set EXPONENT");
+    }
+    else
+    {
+	printf("EXPONENT set to  %hu\n", io);
+    }
+
+    io = 27;
+    if (ioctl(fd, BRPA3_SET_MODULUS, &io) == -1)
+    {
+	perror("Failed to set MODULUS");
+    }
+    else
+    {
+	printf("MODULUS set to  %hu\n", io);
+    }
+    
+    if (ioctl(fd, BRPA3_GET_EXPONENT, &io) == -1)
+    {
+	perror("Failed to read Exponent");
+    }
+    else
+    {
+	printf("Exponent currently is %hu\n", io);
+    }
+
+
+    if (ioctl(fd, BRPA3_GET_MODULUS, &io) == -1)
+    {
+	perror("Failed to read MODULUS");
+    }
+    else
+    {
+	printf("MODULUS currently is %hu\n", io);
+    }
+
+
+//#define BRPA3_GET_MODULUS _IOR('q', 4, unsigned short)
+    
     printf("Writing...\n");
     write(fd, message,strlen(message));
     printf("Reading.. \n");
